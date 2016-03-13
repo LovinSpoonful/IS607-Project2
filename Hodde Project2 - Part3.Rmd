@@ -1,0 +1,85 @@
+---
+title: "IS 607 - Project 2 - Part 3"
+author: "Rob Hodde"
+date: "March 13, 2016"
+output: html_document
+---
+
+Choose any three of the "wide" datasets identified in the Week 6 Discussion items.  Your code should be in an R Markdown file, posted to rpubs.com, and should include narrative descriptions of your data cleanup work, analysis, and conclusions.
+
+---------
+
+###Untidy Auction Data###
+***Problem Designed by Christopher Martin***
+
+---------
+
+**The Data**
+
+Untidy Data: Auction listings
+
+
+---------
+
+*Read the information from your .CSV file into R:*  
+
+```{r}
+
+suppressWarnings(library(knitr))
+library(stringr)
+
+f <- read.csv(file = "https://raw.githubusercontent.com/chrisgmartin/DATA607/master/utidy_auction_data.csv", header=TRUE, sep=",") #read the csv file into a data frame
+
+f$Price <- substr(f$Price,2,9)
+f$Price <- as.numeric(as.character(f$Price))
+
+f$low_est <- unlist(str_extract_all(f$Range,"[:digit:]+ ")) #extract the low estimated bid price
+f$hi_est  <- unlist(substr(str_extract_all(f$Range," \\$[:digit:]+"),3,9)) # extract the high estimated bid price
+f$low_est <- as.numeric(as.character(f$low_est))
+f$hi_est  <- as.numeric(as.character(f$hi_est))
+
+```
+
+---------
+
+*Use tidyr and dplyr as needed to tidy and transform your data.*
+
+```
+By all accounts this already is a tidy dataset.  
+
+1. Each variable forms a column.
+2. Each observation forms a row.
+3. Each type of observational unit forms a table.
+
+The only transformation needed was the use of regular expressions
+to change alphanumeric values into numeric values.
+
+```
+
+---------
+
+**Analysis:** 
+
+*Find the total percent difference from the estimates (high and low) and the sold prices. (Sold Price - High Estimate)/High Estimate = %.*
+
+*There should be two answers: High Difference and Low Difference.*  
+
+```{r}
+
+f$low_diff <- (f$Price - f$low_est)/f$low_est
+f$hi_diff  <- (f$Price - f$hi_est)/f$hi_est
+kable(f, format = "markdown")
+fsum <- c(sum(f$Price), sum(f$low_est), sum(f$hi_est))
+```
+```
+The total (sum of) percent differences between sold prices and low estimates is  `r round((fsum[1] - fsum[2])/fsum[2],2)*100`%. 
+The total (sum of) percent differences between sold prices and high estimates is `r round((fsum[1] - fsum[3])/fsum[3],2)*100`%. 
+
+The lowest percent any item sold below its low estimate:   `r round(min(f$low_diff),2)*100`%.
+The highest percent any item sold above its high estimate: `r round(max(f$hi_diff),2)*100`%.
+```
+
+---------
+
+
+
