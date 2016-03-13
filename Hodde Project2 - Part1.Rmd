@@ -1,0 +1,127 @@
+---
+title: "IS607 - Project 2 - Part 1"
+author: "Rob Hodde"
+date: "March 12, 2016"
+output: html_document
+---
+
+Choose any three of the "wide" datasets identified in the Week 6 Discussion items.  Your code should be in an R Markdown file, posted to rpubs.com, and should include narrative descriptions of your data cleanup work, analysis, and conclusions.
+
+---------
+
+###Distribution of Wealth in the US###
+***Problem Designed by Ken Markus***
+
+---------
+
+**The Data**
+
+Distribution of Wealth in the US.
+
+Source: http://www2.ucsc.edu/whorulesamerica/power/wealth.html
+
+---------
+
+*Read the information from your .CSV file into R:*  
+
+```{r}
+
+suppressWarnings(library(knitr))
+library(stringr)
+suppressMessages(library(dplyr))
+suppressWarnings(library(tidyr))
+
+f <- read.csv(file = "https://raw.githubusercontent.com/LovinSpoonful/IS607-Project2/30c92b92cf3e868667e08189de298a07b8bcaede/DistWealth.csv", header=FALSE, sep=",") 
+
+```
+
+---------
+
+*Use tidyr and dplyr as needed to tidy and transform your data.*
+
+```{r, warning=FALSE}
+
+hdr <- as.vector(as.matrix(f[2,2:length(f[2,])])) # get column names
+hdr <- str_replace_all(hdr, " ", "_") # replace spaces with underscores
+names(f) <- c("Year",hdr) # assign meaningful column names
+f1 <- f[-(1:2),] # remove header rows
+
+#create a single record for each Wealth Bracket and Year combination 
+f2 <- suppressWarnings(gather(f1,"Bracket","Share",2:length(f1[1,])))  
+
+f2$Share <- str_trim(str_replace(f2$Share,"\\%","")) # remove percent sign
+f2$Share <- as.numeric(as.character(f2$Share)) # convert to numeric values
+f2 <- f2[complete.cases(f2),] # finally, remove all incomplete rows (have NA values)
+```
+```
+Tidy Data Sample Output:
+```
+```{r, echo=FALSE}
+head(f2)
+
+```
+
+---------
+
+**The Analysis**
+
+*Review how the distribution of wealth has changed for the three groups listed over time.*
+
+```
+Below are three plots showing the change in wealth
+distribution for the Net Worth Classes over the
+studied time period.
+```
+```{r, warning=TRUE}
+par(mfrow = c(3, 1)) 
+ylimits <- range(f2$Share) 
+
+for (i in 1:length(hdr)){
+   xp <- subset(f2[1], f2[2] == hdr[i])
+   yp <- subset(f2$Share, f2$Bracket == hdr[i])
+   plot(x = xp, y = yp, main = hdr[i], xlab = colnames(f2)[1], ylab = colnames(f2)[3])  
+}
+```
+```
+The "Top 1%" experienced dramatic drops in wealth
+immediately after the "Dot Com Crash" of 2001, followed
+by a gradual recovery ever since, with a slight hiccup
+from the subprime mortgage crisis of 2008.
+
+The "Next 19%" proportionally benefited from the 2001
+crash, probably because they were not as heavily invested
+in NASDAQ stocks and tech-based private equity. However,
+it should be noted that the theoretical total wealth of 
+the U.S. dropped considerably between March 2000 and
+November 2002, so this group also experienced a drop in 
+net worth during that time.
+
+Most notable is the dramatic proportional drop in wealth
+experienced by the "Bottom 80%" from 2001 to 2010.
+In 2001 the US changed its trade policy with China, leading
+to explosive growth of imports from China and ballooning trade
+deficits.  Between 2001 and 2010, nearly 50,000 US factories
+were closed and over six million manufacturing jobs lost. (1)
+Manufacturing shrunk from 9.3% of employment to 4.5% - eerily 
+similar to the drop in the Bottom 80% share of wealth -
+from 8.7% to 4.7%.
+
+In addition to the collapse of U.S. manufacturing, the 
+2008 financial crisis affected the Bottom 80% the most,
+because the vast majority of loan defaults came from this
+sector of the population. (2)
+
+
+(1) See http://www.politifact.com/punditfact/statements/2015/apr/23/ed-schultz/msnbcs-schultz-trade-deals-closed-50000-factories/
+
+(2) See https://en.wikipedia.org/wiki/Subprime_mortgage_crisis
+
+```
+
+---------
+
+
+
+
+
+

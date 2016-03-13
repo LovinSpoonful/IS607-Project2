@@ -1,0 +1,157 @@
+---
+title: "IS607 - Project 2 - Part 2"
+author: "Rob Hodde"
+date: "March 12, 2016"
+output: html_document
+---
+
+Choose any three of the "wide" datasets identified in the Week 6 Discussion items.  Your code should be in an R Markdown file, posted to rpubs.com, and should include narrative descriptions of your data cleanup work, analysis, and conclusions.
+
+---------
+
+###Generator Capacity Prices###
+***Problem Designed by Daniel Smilowitz***
+
+---------
+
+**The Data**
+
+Generators in the NYS electricity market are paid based on the outcome of competitive Unforced Capacity (UCAP) auctions.
+
+There are 3 auctions:
+
+- *Monthly* - takes place monthly before final values are known
+
+- *Spot* - takes place monthly once values are finalized
+
+- *Strip* - takes place twice a year (May and November) for the following six months
+
+The prices for each auction are set in four different locations - NYC, Long Island (LI), Lower Hudson Valley (LHV), and Rest of State (ROS). The past ~12.5 years worth of auction results are contained in a table, as depicted below.  All values are the price paid to generators in $/kW-month. 
+Data source: New York Independent System Operator
+
+---------
+
+*Read the information from your .CSV file into R:*  
+
+```{r}
+
+suppressWarnings(library(knitr))
+library(stringr)
+suppressMessages(library(dplyr))
+suppressWarnings(library(tidyr))
+
+f <- read.csv(file = "https://raw.githubusercontent.com/LovinSpoonful/IS607-Project2/364b20a46f67b7b0742e9cb0b03853c51f97a791/UCAP.csv", header=FALSE, sep=",") #read the csv file into a data frame
+kable(head(f), format = "markdown")
+
+```
+
+
+---------
+
+*Use tidyr and dplyr as needed to tidy and transform your data.*
+
+```{r, warning=FALSE}
+
+typ <- as.vector(as.matrix(f[1,2:length(f[1,])]))  #get auction type
+loc <- as.vector(as.matrix(f[2,2:length(f[2,])]))  #get auction location
+typloc <- paste(typ,loc,sep = "|") #concatenate them temporarily so we can gather
+names(f) <- c("AuctionDate",typloc)  # assign meaningful column names
+f1 <- f[-(1:2),] # remove header rows
+
+#create a single record for each auction (Date, Type and Location) 
+f2 <- suppressWarnings(gather(f1,"TypLoc","Price",2:length(f1[1,])))  
+
+#split the auction type and location into two columns
+f3 <- separate(data = f2, col = "TypLoc", into = c("Type", "Location"), sep = "\\|")
+
+#split the month and year into two columns
+f4 <- separate(data = f3, col = "AuctionDate", into = c("Month", "Year"), sep = " ")
+
+f4$Price <- str_trim(str_replace(f4$Price,"\\$","")) # remove dollar sign from prices
+f4$Price <- as.numeric(as.character(f4$Price)) # convert prices to numeric values
+f4 <- f4[complete.cases(f4),] # finally, remove all incomplete rows (have NA values)
+```
+```
+Tidy Data Sample Output:
+```
+```{r, echo=FALSE}
+kable(head(f4), format = "markdown") #now we have tidy data!
+
+```
+
+---------
+
+
+**The Analysis**
+
+*Which month of the year sees the highest prices in each location?*
+
+```{r, warning=FALSE, message=FALSE}
+
+#calculate the average price by month for each location
+f6 <- f4 %>% 
+  group_by(Location,Month) %>% 
+  summarise(PriceAvg = mean(Price)) %>%  
+  arrange(Location,desc(PriceAvg)) 
+
+#select the highest average priced month for each location
+f7 <- f6 %>%
+  group_by(Location) %>%
+  select(Month, PriceAvg) %>%
+  top_n(1) %>%
+  arrange(Location, desc(PriceAvg))
+```
+```
+The highest prices by location occur as follows: 
+```
+```{r, echo=FALSE}
+kable(f7, format = "markdown")
+```
+
+---------
+
+*What is the average difference between NYC and ROS prices?*
+
+```{r}
+nyc <- subset(f7$PriceAvg, f7$Location == "NYC")
+ros <- subset(f7$PriceAvg, f7$Location == "ROS")
+```
+```
+The average difference between NYC and ROS 
+prices is `r sprintf("$ %3.2f", nyc)` - `r sprintf("$ %3.2f", ros)` = `r sprintf("$ %3.2f", nyc - ros)`.
+```
+---------
+
+*Which calendar year saw the highest average price across regions (ignoring weighting)?*
+
+```{r, warning=FALSE, message=FALSE}
+#calculate the average price for each year
+f8 <- f4 %>% 
+  group_by(Year) %>% 
+  summarise(PriceAvg = mean(Price)) %>%  
+  top_n(1) %>%
+  arrange(desc(PriceAvg))
+```
+```
+The highest average price across all regions occurred in `r f8$Year`.
+```
+
+---------
+
+*Is the monthly auction or the spot auction more volatile (i.e. which has the most variability in pricing)?*
+ 
+```{r}
+monthlySD <- round(sd(subset(f4$Price,f4$Type == "Spot")),digits = 2)
+spotSD    <- round(sd(subset(f4$Price,f4$Type == "Monthly")),digits = 2)
+```
+```
+One measure of volatility is standard deviation. 
+The standard deviation of the monthly auction is `r monthlySD`.
+The standard deviation of the spot auction is `r spotSD`. 
+Therefore the `r ifelse(spotSD > monthlySD,"spot","monthly")` auction is more volatile.
+
+```
+
+---------
+
+
